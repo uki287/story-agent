@@ -135,3 +135,27 @@ python main.py
 - `SearchSkill` 是**教学简化实现**，用模型内部知识充当检索。生产环境应替换为真实检索 API。
 - 代码不含单元测试，设计讲义第 6 章列出了建议的测试策略。
 - 密钥只应在 `story_llm.py` 中读取，其他模块不直接接触密钥。
+
+### 常见问题：推送报`error setting certificate file`
+
+报错形如：
+
+```
+fatal: unable to access 'https://github.com/...': error setting certificate file:
+.../mingw64/etc/ssl/certs/ca-bundle.crt
+```
+
+这是本机 Git 安装缺少证书目录导致的，与网络或账号无关。可任选一种处理：
+
+```bash
+# 方案一：单次推送临时跳过校验
+GIT_SSL_NO_VERIFY=true git push
+
+# 方案二：全局关闭该校验（不推荐，仅限临时排障）
+git config --global http.sslVerify false
+
+# 方案三（推荐）：补装 Git for Windows 官方完整版，
+#   或在Git 安装目录下找到 ca-bundle.crt 并放到 mingw64/etc/ssl/certs/
+```
+
+长期建议用方案三恢复证书校验。
