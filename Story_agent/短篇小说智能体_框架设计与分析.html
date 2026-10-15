@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>短篇小说生成智能体 · 框架设计与分析（教学讲义）</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1f2328; --ink2:#57606a; --ink3:#8b949e;
+    --line:#e3e6ea; --line2:#d0d7de;
+    --purple:#534ab7; --purple-bg:#eeedfe; --purple-ink:#26215c;
+    --blue:#185fa5; --blue-bg:#e6f1fb; --blue-ink:#042c53;
+    --teal:#0f6e56; --teal-bg:#e1f5ee;
+    --red:#a32d2d; --red-bg:#fcebeb; --red-line:#e24b4a;
+    --amber:#854f0b; --amber-bg:#faeeda; --amber-ink:#412402;
+    --green:#3b6d11; --green-bg:#eaf3de;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
+  header.top{margin-bottom:32px;}
+  .kicker{display:inline-block;font-size:12px;letter-spacing:.08em;color:var(--purple);
+          background:var(--purple-bg);border:1px solid #cecbf6;border-radius:999px;
+          padding:3px 12px;margin-bottom:14px;}
+  h1{font-size:26px;line-height:1.35;font-weight:600;margin:0 0 10px;}
+  .sub{color:var(--ink2);font-size:14px;}
+  .meta{margin-top:16px;font-size:12.5px;color:var(--ink3);}
+  .meta code{background:#eef0f3;border-radius:4px;padding:1px 6px;font-size:12px;color:var(--ink2);}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+          padding:26px 28px;margin-bottom:20px;}
+  h2{font-size:19px;font-weight:600;margin:0 0 6px;display:flex;align-items:center;gap:10px;}
+  h2 .no{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+         border-radius:8px;background:var(--purple);color:#fff;font-size:13px;font-weight:600;flex:none;}
+  h2+.lead{color:var(--ink2);font-size:13.5px;margin:0 0 20px;}
+  h3{font-size:15.5px;font-weight:600;margin:26px 0 8px;}
+  h3:first-of-type{margin-top:6px;}
+  h4{font-size:14px;font-weight:600;margin:18px 0 6px;color:var(--ink);}
+  p{margin:10px 0;}
+  ul,ol{margin:10px 0;padding-left:22px;}
+  li{margin:6px 0;}
+  strong{font-weight:600;}
+  code{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.8px;
+       background:#eef0f3;border-radius:4px;padding:1.5px 6px;color:#0a3069;}
+
+  .callout{border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;}
+  .callout .ct{font-weight:600;display:block;margin-bottom:4px;font-size:13.5px;}
+  .c-red{background:var(--red-bg);border:1px solid #f7c1c1;color:#501313;}
+  .c-red .ct{color:var(--red);}
+  .c-blue{background:var(--blue-bg);border:1px solid #b5d4f4;color:#042c53;}
+  .c-blue .ct{color:var(--blue);}
+  .c-amber{background:var(--amber-bg);border:1px solid #fac775;color:#412402;}
+  .c-amber .ct{color:var(--amber);}
+  .c-green{background:var(--green-bg);border:1px solid #c0dd97;color:#173404;}
+  .c-green .ct{color:var(--green);}
+  .c-teal{background:var(--teal-bg);border:1px solid #9fe1cb;color:#04342c;}
+  .c-teal .ct{color:var(--teal);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.2px;}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top;}
+  th{background:#f2f4f7;font-weight:600;color:var(--ink2);font-size:12.5px;
+     letter-spacing:.02em;white-space:nowrap;}
+  tbody tr:nth-child(even){background:#fafbfc;}
+  td code{white-space:nowrap;}
+  .lv{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+  .lv-f{background:var(--red-bg);color:var(--red);border:1px solid #f7c1c1;}
+  .lv-h{background:var(--amber-bg);color:var(--amber);border:1px solid #fac775;}
+  .lv-m{background:var(--blue-bg);color:var(--blue);border:1px solid #b5d4f4;}
+  .lv-l{background:#eef0f3;color:var(--ink2);border:1px solid var(--line2);}
+
+  .layers{display:flex;flex-direction:column;gap:10px;margin:18px 0;}
+  .layer{border:1px solid var(--line);border-radius:10px;padding:14px 18px;
+         display:flex;gap:16px;align-items:flex-start;}
+  .layer .lname{flex:none;width:132px;font-weight:600;font-size:14px;}
+  .layer .ldesc{font-size:13.4px;color:var(--ink2);}
+  .layer .ldesc b{color:var(--ink);font-weight:600;}
+  .L-blue{background:var(--blue-bg);border-color:#b5d4f4;}
+  .L-blue .lname{color:var(--blue-ink);}
+  .L-purple{background:var(--purple-bg);border-color:#cecbf6;}
+  .L-purple .lname{color:var(--purple-ink);}
+  .L-amber{background:var(--amber-bg);border-color:#fac775;}
+  .L-amber .lname{color:var(--amber-ink);}
+  .tag{font-size:11px;font-weight:600;color:var(--red);border:1px solid #f7c1c1;
+       background:var(--red-bg);border-radius:6px;padding:1px 7px;margin-left:8px;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0;}
+  .mini{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fbfcfd;}
+  .mini h4{margin:0 0 6px;font-size:13.5px;}
+  .mini p{margin:0;font-size:13px;color:var(--ink2);}
+  .mini code{font-size:12.2px;}
+
+  .flowtxt{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.4px;
+           background:#f2f4f7;border:1px solid var(--line);border-radius:10px;
+           padding:16px 18px;white-space:pre;overflow-x:auto;line-height:1.75;color:#24292f;}
+
+  footer{text-align:center;color:var(--ink3);font-size:12.5px;margin-top:28px;}
+  @media(max-width:640px){ .grid2{grid-template-columns:1fr;} .layer{flex-direction:column;gap:4px;} .layer .lname{width:auto;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">智能体开发实战 · 教学讲义（框架与分析篇）</div>
+  <h1>短篇小说生成智能体<br>—— 从流程图到可落地框架</h1>
+  <p class="sub">学习者可通过输入「主题 + 要求」，让智能体自动产出一篇短篇小说。本讲义不写实现代码，专注于<strong>流程诊断</strong>与<strong>框架设计</strong>，为后续编码阶段立下蓝图。</p>
+  <div class="meta">教学对象：具备 Python 基础、了解大模型 API 调用的同学 &nbsp;·&nbsp; 参考工程：<code>E:\react-agent</code>（手写 ReAct Agent 教学项目）</div>
+</header>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">0</span>导读：这节课要解决什么</h2>
+  <p class="lead">先明确我们手里的"题面"，再决定怎么搭框架。</p>
+
+  <h3>学习目标</h3>
+  <ol>
+    <li><strong>会读图</strong>：能逐节点说清一张智能体流程图里每个框、每条箭头的职责。</li>
+    <li><strong>会挑错</strong>：能识别流程图中的逻辑断点，并判断其严重程度。</li>
+    <li><strong>会设计</strong>：能为一类"多步骤创作任务"设计出分层的智能体框架。</li>
+    <li><strong>会权衡</strong>：理解为什么要有记忆层、为什么必须有循环终止条件。</li>
+  </ol>
+
+  <h3>为什么要先做框架，再写代码</h3>
+  <p>很多同学拿到题目第一反应是"赶紧写代码"。但智能体开发和普通函数开发不同：它的复杂度不在语法，而在<strong>控制流与状态管理</strong>——谁在什么时候调用谁、结果存哪里、什么时候停。这些想不清楚，代码写得越快，返工越狠。</p>
+  <div class="callout c-blue">
+    <span class="ct">一句话原则</span>
+    流程图是"需求的骨架"，框架是"骨架的分层实现"。先让骨架正确，再往上填肉。
+  </div>
+
+  <h3>本讲义范围</h3>
+  <p>本文只做到"框架与分析"这一步：定义清楚<strong>有哪些层、每层职责、层与层之间的数据契约</strong>，并给出实现计划。真正的编码与运行，留到下一阶段。</p>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">1</span>读懂原流程图：逐节点解剖</h2>
+  <p class="lead">先看懂，再评判。这是分析任何系统的通用第一步。</p>
+
+  <h3>1.1 节点逐一拆解</h3>
+  <table>
+    <thead><tr><th>节点</th><th>它是什么</th><th>在本系统里的职责</th></tr></thead>
+    <tbody>
+      <tr><td><code>用户输入主题</code></td><td>流程起点</td><td>接收用户的一句话主题，如"一只想飞的猫"。</td></tr>
+      <tr><td><code>Agent 核心循环</code></td><td>系统的"大脑"</td><td>反复决策"下一步做什么"，直到可以收尾。这是智能体区别于普通流水线的地方。</td></tr>
+      <tr><td><code>Skill 选择</code>（菱形）</td><td>路由器</td><td>根据当前状态，决定调用哪一个技能。</td></tr>
+      <tr><td><code>OutlineSkill</code></td><td>技能：结构</td><td>生成故事大纲／分节骨架。</td></tr>
+      <tr><td><code>大纲审批门</code> ★新增</td><td>人在环 · 早期检查点</td><td>先由 OutlineSkill 产出<strong>精简摘要卡</strong>（约 150 字）供用户快速验收；通过后再展开为详细大纲。用户可就地修改或换方向重生成。</td></tr>
+      <tr><td><code>SearchSkill</code></td><td>技能：素材</td><td>检索背景知识、细节素材。</td></tr>
+      <tr><td><code>CharacterSkill</code></td><td>技能：人物</td><td>设计角色卡片（性格、动机、外貌）。</td></tr>
+      <tr><td><code>StyleSkill</code></td><td>技能：文体</td><td>确定语言风格（人称、句式、节奏）。</td></tr>
+      <tr><td><code>EvalSkill</code></td><td>技能：质检</td><td>对成稿打分并列出问题。</td></tr>
+      <tr><td><code>HITL 审批门</code>（终稿）</td><td>人在环 · 后期检查点</td><td>把成稿交给人类审阅：满意则批准，不满意则提修改意见。</td></tr>
+      <tr><td><code>输出最终作品</code></td><td>流程终点</td><td>交付成稿。</td></tr>
+    </tbody>
+  </table>
+  <p class="sub" style="font-size:13px;color:var(--ink3)">注：原图写作 <code>HTL</code>，业界通用缩写为 <code>HITL</code>（Human-in-the-Loop，人类在环）。这是一处笔误，本文统一修正为 HITL。</p>
+
+  <h3>1.2 什么是"Agent 核心循环"</h3>
+  <p>这是全图最关键、也最容易被画错的概念。智能体之所以"智能"，是因为它在一个循环里不断做四件事：</p>
+  <div class="flowtxt">Thought（思考）  →  Action（选一个技能并调用）
+        ↑                          ↓
+        └────  Observation（观察技能返回的结果）</div>
+  <p>这个"思考—行动—观察"的闭环，就是 <strong>ReAct</strong>（Reasoning + Acting）范式的核心。它意味着：<strong>技能执行完，结果必须回到循环里</strong>，模型才能据此决定下一步。</p>
+
+  <div class="callout c-red">
+    <span class="ct">这就是原图最大的问题</span>
+    原图中所有技能都是"死胡同"——没有任何箭头指回核心循环。这样一来，"循环"名存实亡，系统退化成一条单向流水线，失去了根据中间结果动态调整的能力。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">2</span>流程会诊：12 处必须修改的地方</h2>
+  <p class="lead">按严重程度分级：致命（不修就跑不通）／高／中／低。</p>
+
+  <table>
+    <thead><tr><th style="width:34px">#</th><th>问题</th><th style="width:70px">级别</th><th>修改方案与理由</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>技能结果无回填箭头，ReAct 循环断裂</td>
+        <td><span class="lv lv-f">致命</span></td>
+        <td>为每个技能补一条 <code>Observation → 核心循环</code> 的回边。<strong>理由</strong>：不回填，模型就不知道技能干了什么，无法决策下一步。</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>缺少正文撰写技能 <code>DraftSkill</code></td>
+        <td><span class="lv lv-f">致命</span></td>
+        <td>新增草稿技能，置于评估之前。<strong>理由</strong>：评估的对象必须是"已写好的正文"；没有它，EvalSkill 会空转。</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>缺少记忆模块，跨步骤信息不共享</td>
+        <td><span class="lv lv-f">致命</span></td>
+        <td>引入共享工作台 <code>StoryContext</code>。<strong>理由</strong>：大纲、人物、风格要被"正文技能"复用，否则长文前后矛盾。</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>只接收"主题"，没有"要求"输入</td>
+        <td><span class="lv lv-h">高</span></td>
+        <td>输入改为 <code>主题 + 要求</code> 二元组。<strong>理由</strong>：字数、风格、受众、禁忌都是硬约束，缺了只能靠猜。</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>缺需求解析环节，自然语言直接进循环</td>
+        <td><span class="lv lv-h">高</span></td>
+        <td>新增"解析层"，把自然语言转成结构化 <code>StorySpec</code>。<strong>理由</strong>：给整条流水线一份统一的"需求合同"。</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>无最大步数 / 预算 / 超时控制</td>
+        <td><span class="lv lv-h">高</span></td>
+        <td>设 <code>max_steps</code> 硬上限 + token 预算熔断。<strong>理由</strong>：防止"评估→重写→再评估"无限循环，烧光费用。</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>"Skill 选择"画成菱形但并非真值判定</td>
+        <td><span class="lv lv-m">中</span></td>
+        <td>改为"技能路由器（Router / Dispatcher）"。<strong>理由</strong>：菱形在标准流程图里表示二值判定，这里是多分支选择，语义不同。</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>评估不合格后没有修订分支</td>
+        <td><span class="lv lv-m">中</span></td>
+        <td>补 <code>分数 &lt; 阈值 → 修订 → 回循环</code>。<strong>理由</strong>：质检的意义在于触发改进，否则评估只是打印一个分数。</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>HITL 的"修改意见"如何进入循环未说明</td>
+        <td><span class="lv lv-m">中</span></td>
+        <td>把人工反馈作为带上下文的输入重新进入循环。<strong>理由</strong>：否则"修改"箭头指向哪里语义不明，模型也收不到反馈内容。</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>批准后缺"组装成稿"步骤</td>
+        <td><span class="lv lv-m">中</span></td>
+        <td>新增"产出层"：拼装标题 + 正文 + 元数据。<strong>理由</strong>：草稿不等于成稿，交付物需要统一格式化。</td>
+      </tr>
+      <tr>
+        <td>11</td>
+        <td>命名 <code>HTL</code> 实为 <code>HITL</code></td>
+        <td><span class="lv lv-l">低</span></td>
+        <td>统一改用 HITL（Human-in-the-Loop）。<strong>理由</strong>：术语一致性，避免读者误解。</td>
+      </tr>
+      <tr>
+        <td>12</td>
+        <td>无重试与错误兜底</td>
+        <td><span class="lv lv-l">低</span></td>
+        <td>技能异常捕获，把错误文本回填给模型自纠。<strong>理由</strong>：参数幻觉、解析失败是常态，系统不能一遇错就崩。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout c-amber">
+    <span class="ct">教学重点：为什么说 1、2、3 是"致命"而非"待优化"？</span>
+    拿盖房子打比方：<strong>问题 1</strong> 是承重墙没砌上（循环结构不成立）；<strong>问题 2</strong> 是厨房压根没设计（核心功能缺失）；<strong>问题 3</strong> 是没打地基（状态无处安放）。这三条不解决，后面的门窗装饰（低优先级问题）毫无意义。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">3</span>框架设计：六层架构</h2>
+  <p class="lead">把"修补后的流程图"重新组织成分层结构——这是从"图"到"工程"的关键一步。</p>
+
+  <h3>3.1 为什么用"分层"来组织</h3>
+  <p>一张流程图能表达"顺序"，但表达不了"职责边界"。分层的好处是：<strong>每层只对上一层负责，变化被隔离在层内</strong>。比如以后把 mock 检索换成真实搜索 API，只动技能层，其余层不受影响。这正是软件工程里的"关注点分离"。</p>
+
+  <div class="layers">
+    <div class="layer L-blue">
+      <div class="lname">① 交互层</div>
+      <div class="ldesc"><b>Interaction</b> —— 与人对话的全部出入口。接收 <code>主题 + 要求</code>；把解析结果回显给用户确认；并承担两道审核门（大纲审批门、终稿审批门）的问答；同时<strong>实时回显智能体的思考与技能调用过程</strong>，避免用户长时间面对空白屏幕。<br>关键点：这一层只做"收发"，不含任何业务逻辑。</div>
+    </div>
+    <div class="layer L-blue">
+      <div class="lname">② 解析层<span class="tag">新增</span></div>
+      <div class="ldesc"><b>Requirement Parser</b> —— 把模糊的自然语言，翻译成结构化规格 <code>StorySpec</code>（题材、字数、风格、受众、忌宜）。<br>关键点：它是"需求"的唯一真相来源，下游所有技能都从这里取约束。</div>
+    </div>
+    <div class="layer L-purple">
+      <div class="lname">③ 编排层</div>
+      <div class="ldesc"><b>Orchestrator（即原图的"Agent 核心循环"）</b> —— 系统的唯一大脑。负责：跑 ReAct 循环、路由到具体技能、判定是否收敛、执行修订、控制步数与预算，并在两道审核门处暂停、接收人工反馈。<br>关键点：<b>它自己从不生成内容</b>，只做决策。</div>
+    </div>
+    <div class="layer L-blue">
+      <div class="lname">④ 技能层</div>
+      <div class="ldesc"><b>Skill Layer</b> —— 六个"手脚"技能：大纲、素材、人物、风格、正文（新增）、评估。每个技能只做一件小事，输入输出都是清晰的文本。<br><strong>术语说明</strong>：本项目把能力单元统称为<strong>技能（Skill）</strong>，由 <code>SkillRegistry</code> 注册并向模型暴露 schema，Agent 通过<strong>技能调用（skill calling）</strong>触发，取代传统 Tool / Function Calling 的命名。</div>
+    </div>
+    <div class="layer L-blue">
+      <div class="lname">⑤ 产出层<span class="tag">新增</span></div>
+      <div class="ldesc"><b>Assembler</b> —— 把定稿的正文与标题、元数据（字数、风格标签、评估分）拼装成最终交付物。</div>
+    </div>
+    <div class="layer L-amber">
+      <div class="lname">⑥ 记忆层<span class="tag">新增</span></div>
+      <div class="ldesc"><b>StoryContext</b> —— <b>横向支撑层</b>，贯穿编排、能力、产出三层。集中保存：规格、大纲、人物、风格指南、草稿、历次评语。所有技能读写同一份工作台，从而保证长文一致。</div>
+    </div>
+  </div>
+
+  <h3>3.2 层与层之间的数据契约</h3>
+  <p>分层不等于放任。要让层之间能协作，必须约定"传什么"。下表是本框架的核心契约：</p>
+  <table>
+    <thead><tr><th>流向</th><th>传递的数据</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>交互层 → 解析层</td><td><code>(topic, requirements)</code> 两段文本</td><td>用户的原始自然语言。</td></tr>
+      <tr><td>解析层 → 编排层</td><td><code>StorySpec</code> 对象</td><td>结构化规格，是整个流程的输入基准。</td></tr>
+      <tr><td>编排层 → 技能层</td><td><code>(技能名, 参数JSON)</code></td><td>一次只调一个技能，参数由模型给出。</td></tr>
+      <tr><td>技能层 → 记忆层</td><td>写入产物（如大纲文本）</td><td>技能把结果写入 <code>StoryContext</code>。</td></tr>
+      <tr><td>技能层 → 编排层</td><td><code>Observation</code> 文本</td><td>技能执行结果（或错误信息）回填给循环。</td></tr>
+      <tr><td>编排层 → 产出层</td><td>定稿标记</td><td>当评估达标且人工批准后触发。</td></tr>
+      <tr><td>产出层 → 交互层</td><td>最终作品文本</td><td>交付给用户。</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout c-green">
+    <span class="ct">设计检验：怎样判断一个框架"分对了层"？</span>
+    做一次"替换实验"——假设把某个技能整个换掉（比如把 <code>SearchSkill</code> 从假检索换成真检索），如果只需要改一个文件、其他层纹丝不动，说明层次划分是成功的。
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">4</span>六大关键机制</h2>
+  <p class="lead">框架定了骨架，这六个机制决定了它"跑起来稳不稳"。</p>
+
+  <h3>机制一：ReAct 循环（编排层的心脏）</h3>
+  <p>用文本协议驱动最直观，适合教学：每一步让模型输出 <code>Thought</code> 与 <code>Action</code>，我们解析后执行，再把结果作为 <code>Observation</code> 塞回对话历史。如此往复。</p>
+  <div class="flowtxt">messages = [system(技能清单+规则), user(任务)]
+
+while 未收敛 and 步数 &lt; 上限:
+    raw   = 大模型(messages)          # Thought + Action
+    解析出 (技能名, 参数) 或 "收尾"
+    若 收尾:  跳出
+    结果  = 执行技能(技能名, 参数)
+    messages += [assistant(raw), user("Observation: " + 结果)]
+
+收尾 → 质量门 → HITL → 产出</div>
+  <p>注意两个协议细节（很多同学在这里踩坑）：</p>
+  <ul>
+    <li>技能结果在<strong>文本协议</strong>下必须以 <code>role="user"</code> 回填，而不是 <code>role="tool"</code>——后者是 OpenAI 原生 Function Calling 专用，强用会报错。</li>
+    <li>参数必须是合法 JSON。一旦解析失败，<strong>不要让程序去猜</strong>（比如硬套一个默认参数），而应回传"格式错误，请重试"，让模型自己纠正。</li>
+  </ul>
+
+  <h3>机制二：状态机与终止条件</h3>
+  <p>"循环"必须有出口，否则就是死循环。本框架设三道闸：</p>
+  <table>
+    <thead><tr><th>闸门</th><th>触发条件</th><th>处置</th></tr></thead>
+    <tbody>
+      <tr><td>正常收敛</td><td>模型主动声明收尾，且评估分 ≥ 阈值</td><td>进入质量门与 HITL。</td></tr>
+      <tr><td>步数上限</td><td>步数达到 <code>max_steps</code></td><td>强制收尾，用当前最佳草稿交付，并提示"未完全收敛"。</td></tr>
+      <tr><td>预算熔断</td><td>累计 token 超过预算</td><td>立即停止，保护成本。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>机制三：记忆与一致性策略</h3>
+  <p>短篇小说的最大风险是"写到后面忘了前面"。记忆层用三招解决：</p>
+  <div class="grid2">
+    <div class="mini"><h4>招数 1 · 集中存放</h4><p>所有中间产物写进同一个 <code>StoryContext</code>，任何技能都能读到完整上下文。</p></div>
+    <div class="mini"><h4>招数 2 · 显式注入</h4><p>写正文时，把大纲、人物卡、风格指南一并塞进提示词，模型"照着写"。</p></div>
+    <div class="mini"><h4>招数 3 · 评语回灌</h4><p>每次评估的问题清单存进记忆，修订时带上，避免改完又犯同样的错。</p></div>
+    <div class="mini"><h4>招数 4 · 关键设定锁定</h4><p>人物姓名、专有名词一经确定即"冻结"，后续提示词要求不得更改。</p></div>
+  </div>
+
+  <h3>机制四：质量门（Eval Gate）</h3>
+  <p>评估技能返回结构化结果，而非一句"写得不错"。建议五个维度各 20 分：主题契合度、结构完整性、人物塑造、语言风格、情感趣味。</p>
+  <div class="flowtxt">{ "score": 82,
+  "维度": { "主题": 18, "结构": 16, "人物": 15, "语言": 17, "情感": 16 },
+  "问题": ["中段节奏拖沓", "配角动机交代不足"],
+  "建议": ["压缩第三段环境描写", "补一句配角为何出手相助"] }</div>
+  <p>编排层据此判断：<code>score ≥ 阈值</code> → 进入 HITL；否则带着"建议"回到循环修订。</p>
+
+  <h3>机制五：双审核门（人在环 · HITL）</h3>
+  <p>HITL 不是"给用户看一眼"，而是<strong>一个可回退的控制点</strong>。它有两条完全不同的出口：</p>
+  <ul>
+    <li><strong>批准</strong> → 交给产出层组装成稿。</li>
+    <li><strong>修改（附意见）</strong> → 把用户意见写进记忆，重新进入 ReAct 循环，让模型带着"哪里要改"再跑一轮。</li>
+  </ul>
+  <div class="callout c-blue">
+    <span class="ct">为什么"修改意见"必须结构化地进入循环？</span>
+    如果只是弹一句"用户不满意"，模型无从下手。必须把意见变成<strong>新的上下文</strong>（例如"用户认为结尾太仓促，希望增加一段离别场景"），它才能精准修订。这也解释了原图第 9 条问题为什么必须修。
+  </div>
+
+  <h4>补充：为什么要在早期再加一道大纲审批门</h4>
+  <p>这是本方案性价比最高的一处改动，理由有三：</p>
+  <ul>
+    <li><strong>改动成本最低</strong>：大纲只有几百字，改一句情节成本极低；若等正文成篇再回头改，往往要重写大段文字。</li>
+    <li><strong>错误放大倍数最小</strong>：大纲是骨架，骨架歪了，人物、正文、风格会整体跟着歪，所以要<strong>早拦</strong>。</li>
+    <li><strong>用户掌控感更强</strong>：让用户在方向层面参与决策，而不是只能对成品说不满意。</li>
+  </ul>
+  <p>两道审核门的定位对比如下：</p>
+  <table>
+    <thead><tr><th>审核门</th><th>位置</th><th>用户可做什么</th><th>出口</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① 大纲审批门</strong> ★新增</td><td>大纲生成之后、人物与正文之前</td><td>浏览大纲全貌；就地修改章节与情节走向；或整条退回重写</td><td>批准则继续；修改则意见入库并重跑大纲</td></tr>
+      <tr><td><strong>② 终稿审批门</strong></td><td>质量评估通过之后、交付之前</td><td>通读成稿；提出细节修改意见</td><td>批准则组装交付；修改则带意见回循环修订</td></tr>
+    </tbody>
+  </table>
+  <div class="callout c-teal">
+    <span class="ct">设计要点：早期门要轻，后期门要重</span>
+    大纲审批门只审<strong>结构与情节走向</strong>，交互应当轻快（列表式浏览 + 就地编辑）；终稿审批门审<strong>全文质量</strong>，允许更细的修改意见。两道门粒度不同，才能既省时间又不漏问题。
+  </div>
+
+  <h4>补充：大纲审批门的交互形态 —— 先摘要验收，再展开全文</h4>
+  <p>直接把一份详细大纲甩给用户，有两个毛病：篇幅长、看不完；改起来也重。因此这道门采用<strong>由粗到细的两段式</strong>设计。</p>
+  <table>
+    <thead><tr><th>阶段</th><th>产出</th><th>篇幅</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td>第一段 · 摘要卡</td><td>一句话立意 + 3~5 条主线情节 + 主要人物 + 结局走向</td><td>约 150 字</td><td>用户 10 秒内读完，快速判断方向对不对</td></tr>
+      <tr><td>第二段 · 详细大纲</td><td>分章 + 每章场景 / 冲突 / 情绪走向</td><td>数百字</td><td>仅在摘要通过后才生成，避免在歪骨架上重投入</td></tr>
+    </tbody>
+  </table>
+
+  <h4>用户返回内容 → 三种处理</h4>
+  <ol>
+    <li><strong>通过</strong>：据此展开详细大纲，写入记忆，继续后续环节。</li>
+    <li><strong>就地修改</strong>：用户在摘要卡上直接改（如把第三条主线改成雨夜相遇），系统按新内容重生成摘要卡，再确认一轮。</li>
+    <li><strong>换方向</strong>：用户给出全新方向，回到 OutlineSkill 从头重生成摘要卡。</li>
+  </ol>
+
+  <div class="callout c-amber">
+    <span class="ct">三条防跑偏规则</span>
+    ① 用户的每一处修改都记入记忆，作为<strong>硬约束</strong>，展开详细大纲时必须遵守，防止展开时又跑偏；② 摘要卡验收<strong>最多 3 轮</strong>，超限自动采用当前版本（这正呼应循环终止条件）；③ 摘要卡必须包含<strong>结局走向</strong>，否则用户无法判断方向是否可接受。
+  </div>
+
+  <div class="callout c-blue">
+    <span class="ct">对实现层的影响（接口约定）</span>
+    <code>OutlineSkill</code> 需支持两种模式：<code>mode=brief</code> 产出摘要卡、<code>mode=detail</code> 产出详细大纲；记忆层相应新增三个键：<code>outline_brief</code>（当前摘要卡）、<code>outline_detail</code>（详细大纲）、<code>outline_locked</code>（用户已确认的硬约束）。
+  </div>
+
+  <h3>机制六：失败模式防御</h3>
+  <p>智能体最常见的五种"翻车"，以及我们的对策：</p>
+  <table>
+    <thead><tr><th>失败模式</th><th>表现</th><th>对策</th></tr></thead>
+    <tbody>
+      <tr><td>无限循环</td><td>反复"评估→重写"停不下来</td><td><code>max_steps</code> 硬上限 + 预算熔断</td></tr>
+      <tr><td>重复调用</td><td>用一模一样的参数反复调同一技能</td><td>记录 <code>(技能名, 参数)</code> 指纹，命中即拦截并提示换招</td></tr>
+      <tr><td>参数幻觉</td><td>编造不存在的技能参数</td><td>捕获异常，把错误文本回填让模型自纠</td></tr>
+      <tr><td>过早交卷</td><td>没调过任何技能就"写完了"</td><td>检测到无技能记录时顶回："请先获取事实依据"</td></tr>
+      <tr><td>顺序错乱</td><td>没写正文就去评估</td><td>前置校验：草稿为空时拒绝执行评估</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">5</span>一次完整运行的时序</h2>
+  <p class="lead">把六层串起来走一遍，理解数据如何流动。</p>
+  <div class="flowtxt">① 用户：「写一篇关于"一只想飞的猫"的童话，1200 字，给 8-12 岁孩子，温暖治愈」
+
+② 解析层 → StorySpec{ 题材:童话, 字数:1200, 风格:温暖治愈, 受众:儿童 ... }
+   交互层回显规格，请用户确认                     ← 天然的检查点
+
+③ 编排层启动 ReAct 循环：
+   ├─ Thought: 先搭骨架 → Action: OutlineSkill(mode=brief)  → Observation: 摘要卡(约150字)
+   ├─ ★ 大纲审批门（两段式）：先把摘要卡交给用户验收
+   │     ├─ 用户就地改了一句：第二章改成雨夜相遇 → 作为硬约束入库 → 重生成摘要卡 → 再确认
+   │     └─ 用户通过摘要卡 → Action: OutlineSkill(mode=detail) → Observation: 详细大纲 → 继续
+   ├─ Thought: 补细节素材 → Action: SearchSkill    → Observation: 猫的习性…
+   ├─ Thought: 定人物     → Action: CharacterSkill → Observation: 主角"阿灰"…
+   ├─ Thought: 定文体     → Action: StyleSkill     → Observation: 风格指南…
+   ├─ Thought: 可以动笔了 → Action: DraftSkill     → Observation: 正文草稿(写入记忆)
+   └─ Thought: 自查质量   → Action: EvalSkill      → Observation: score=71（低于阈值）
+
+④ 编排层判定未达标 → 带着"问题清单"回到循环 → 再调 DraftSkill 修订 → 复查 score=86 ✅
+
+⑤ 质量门通过 → 终稿审批门：展示成稿与评分
+   ├─ 用户：批准 → 产出层组装 → 交付
+   └─ 用户：修改（"结尾太仓促"）→ 意见入库 → 回到 ③ 重跑一轮
+
+⑥ 产出层输出：标题 + 正文 + 元数据（字数 1180 / 风格 温暖治愈 / 评分 86）</div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">6</span>实现计划（只定接口，不写实现）</h2>
+  <p class="lead">框架确定后，下一步是把层拆成模块。这里给出模块清单与职责，作为编码阶段的蓝图。</p>
+
+  <table>
+    <thead><tr><th>模块</th><th>所属层</th><th>核心职责（接口）</th></tr></thead>
+    <tbody>
+      <tr><td><code>story_llm</code></td><td>公共</td><td>统一大模型客户端：<code>chat()</code> / <code>chat_json()</code>，含 token 统计与 JSON 清洗。</td></tr>
+      <tr><td><code>story_spec</code></td><td>解析层</td><td><code>StorySpec</code> 数据结构 + <code>parse_spec(topic, requirements)</code>。</td></tr>
+      <tr><td><code>story_context</code></td><td>记忆层</td><td><code>StoryContext</code>：读写大纲/人物/风格/草稿/评语。</td></tr>
+      <tr><td><code>skills/</code></td><td>技能层</td><td>技能包：<strong>一个技能一个文件</strong>（<code>outline</code> / <code>search</code> / <code>character</code> / <code>style</code> / <code>draft</code> / <code>eval</code>）+ <code>base.py</code>（技能基类）+ <code>registry.py</code>（<code>SkillRegistry</code> 与技能清单），便于单独阅读与测试。</td></tr>
+      <tr><td><code>story_prompt</code></td><td>编排层</td><td>系统提示词模板：注入技能清单、协作协议、循环规则。</td></tr>
+      <tr><td><code>story_agent</code></td><td>编排层</td><td><code>StoryAgent.run(topic, requirements)</code>：ReAct 循环 + 质量门 + HITL。</td></tr>
+      <tr><td><code>story_main</code></td><td>交互层</td><td>命令行入口：采集输入、展示进度、处理审批对话。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>建议的实现顺序</h3>
+  <ol>
+    <li><strong>先搭骨架</strong>：<code>story_llm</code> + <code>story_spec</code>（先让"需求解析"跑通，可独立验证）。</li>
+    <li><strong>再补记忆</strong>：<code>story_context</code>（很简单，但决定了后面所有技能怎么写）。</li>
+    <li><strong>逐个做技能</strong>：六个技能各自独立、可单独测试，是天然的可并行单元。</li>
+    <li><strong>最后做循环</strong>：<code>story_agent</code> 把技能串起来，加质量门与 HITL。</li>
+    <li><strong>灰度验证</strong>：先用"自动批准"模式跑通全链路，再打开真实 HITL 对话。</li>
+  </ol>
+
+  <h3>验证策略（对应后续 TDD 阶段）</h3>
+  <div class="grid2">
+    <div class="mini"><h4>单元级</h4><p>每个技能单独喂输入，检查输出是否符合 schema（尤其评估技能必须返回合法 JSON）。</p></div>
+    <div class="mini"><h4>契约级</h4><p>检查解析层输出的 <code>StorySpec</code> 字段是否齐全、字数是否为整数。</p></div>
+    <div class="mini"><h4>集成级</h4><p>用自动批准模式跑 3 个不同主题，验证能产出完整成稿且不超步数。</p></div>
+    <div class="mini"><h4>鲁棒级</h4><p>人为制造"参数非法""评估不合格"，确认防御机制生效、不崩溃。</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">7</span>课堂小结与思考题</h2>
+
+  <h3>核心结论（务必记住这三句）</h3>
+  <ol>
+    <li><strong>没有"回填"就没有循环</strong>：技能结果必须回到核心循环，ReAct 才成立。</li>
+    <li><strong>没有"记忆"就写不了长文</strong>：跨步骤共享上下文，是一致性的前提。</li>
+    <li><strong>没有"终止条件"就不是工程</strong>：任何循环都必须有出口，否则就是隐患。</li>
+  </ol>
+
+  <h3>思考题</h3>
+  <ol>
+    <li>如果把这套流程从"短篇小说"改成"科研综述"，六个技能里哪几个要换？哪几层不用动？为什么？</li>
+    <li>本方案已采纳"两个审批点"：<strong>大纲审批门</strong>（早）+ <strong>终稿审批门</strong>（晚），见机制五。请继续思考：如果再加第三个审批点（如"人物设定确认"），收益递减的临界点在哪里？</li>
+    <li>记忆层如果无限增长，会不会撑爆上下文窗口？你会用什么策略做"记忆压缩"？</li>
+    <li>如果把评估阈值设得很高（比如 95 分），系统会发生什么？这属于框架问题还是参数问题？</li>
+  </ol>
+</section>
+
+<!-- ============================================================ -->
+<section>
+  <h2><span class="no">8</span>附录：环境与配置契约</h2>
+  <p class="lead">框架要跑起来，必须知道"密钥和地址从哪来"。这部分属于公共层职责，在此明确定义。</p>
+
+  <h3>8.1 配置文件位置</h3>
+  <p>外部配置集中放在<strong>项目根目录的 <code>.env</code> 文件</strong>中（工程内已存在），由公共层 <code>story_llm</code> 在导入时读取，其余任何模块都不直接接触密钥。</p>
+
+  <h3>8.2 变量清单</h3>
+  <table>
+    <thead><tr><th>变量名</th><th>示例</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td><code>OPENAI_API_KEY</code></td><td><code>sk-********</code></td><td>大模型调用的鉴权密钥（本工程使用 DeepSeek 密钥）。</td></tr>
+      <tr><td><code>OPENAI_BASE_URL</code></td><td><code>https://api.deepseek.com/v1</code></td><td>OpenAI 兼容端点地址，指向 DeepSeek 服务。</td></tr>
+    </tbody>
+  </table>
+
+  <h3>8.3 读取约定（公共层唯一入口）</h3>
+  <ul>
+    <li>用 <code>python-dotenv</code> 的 <code>load_dotenv()</code> 在模块导入时加载，做到"一处配置、全项目可用"。</li>
+    <li>客户端只读取上述两个变量构造 <code>OpenAI(api_key=..., base_url=...)</code>；<strong>不做任何字符串拼接</strong>，避免出现非法 URL。</li>
+    <li>由于端点指向 DeepSeek，模型名应与之匹配，建议使用 <code>deepseek-chat</code>。</li>
+    <li>密钥缺失时，应在启动阶段快速失败并给出清晰提示，而不是拖到第一次调用才报错。</li>
+  </ul>
+
+  <div class="callout c-red">
+    <span class="ct">安全提醒（工程规范）</span>
+    <code>.env</code> 内含明文密钥，<strong>必须加入 <code>.gitignore</code>，严禁提交到代码仓库</strong>；如需分享工程，应提供 <code>.env.example</code> 作为模板（只留变量名，不留真实值）。
+  </div>
+</section>
+
+<footer>
+  智能体开发实战 · 框架与分析篇 &nbsp;|&nbsp; 配套工程 <code>E:\react-agent</code> &nbsp;|&nbsp; 下一阶段：模块实现与测试
+</footer>
+
+</div>
+</body>
+</html>

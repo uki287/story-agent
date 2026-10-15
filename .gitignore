@@ -1,0 +1,30 @@
+# ===== 密钥与本地配置：绝不入库=====
+# .env 内含明文 DeepSeek 密钥（OPENAI_API_KEY），一旦提交即永久泄露
+.env
+.env.*
+!.env.example
+
+# ===== Python 缓存与编译产物 =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ===== 虚拟环境 =====
+.venv/
+venv/
+env/
+
+# ===== 编辑器与系统文件 =====
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== 运行产物 =====
+eval_results.jsonl
+*.log
+
+# ===== 助手本地数据（个人会话记录与记忆，不属于项目代码）=====
+.workbuddy/
