@@ -8,9 +8,9 @@ from prompt import build_system_prompt
 class ReActAgent:
     """从零实现的 ReAct Agent"""
     
-    def __init__(self, tools: ToolRegistry, model: str = "gpt-4o-mini"):
+    def __init__(self, tools: ToolRegistry, model: str = None):
         self.tools = tools
-        self.llm = LLMClient(model=model)
+        self.llm = LLMClient(model=model)   # model 传 None 时由 .env 的 MODEL 决定
         self.system_prompt = build_system_prompt(tools.get_tools())
         self.step_count = 0
         self.max_steps = 10

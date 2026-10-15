@@ -537,8 +537,8 @@ while 未收敛 and 步数 &lt; 上限:
     <thead><tr><th>变量名</th><th>示例</th><th>用途</th></tr></thead>
     <tbody>
       <tr><td><code>OPENAI_API_KEY</code></td><td><code>sk-********</code></td><td>大模型调用的鉴权密钥。本地部署若无需鉴权可留空。</td></tr>
-      <tr><td><code>OPENAI_BASE_URL</code></td><td><code>https://api.deepseek.com/v1</code></td><td>OpenAI 兼容端点地址，换服务商时改这里。</td></tr>
-      <tr><td><code>MODEL</code></td><td><code>deepseek-flash</code></td><td>模型名，优先级低于构造参数、高于代码默认值。</td></tr>
+      <tr><td><code>OPENAI_BASE_URL</code></td><td><code>https://…/v1</code></td><td>OpenAI 兼容端点地址，换服务商时改这里。</td></tr>
+      <tr><td><code>MODEL</code></td><td><code>模型名</code></td><td>模型名，优先级低于构造参数；代码不提供默认值。</td></tr>
     </tbody>
   </table>
 
@@ -546,7 +546,7 @@ while 未收敛 and 步数 &lt; 上限:
   <ul>
     <li>用 <code>python-dotenv</code> 的 <code>load_dotenv()</code> 在模块导入时加载，但<strong>必须显式传入同目录的绝对路径</strong>：<code>load_dotenv(Path(__file__).parent / ".env")</code>。若用无参调用，该库会从代码所在目录逐级向上查找，找不到就借用根目录那份，造成两份配置互相干扰且难以排查。</li>
     <li>客户端只读取上述变量构造 <code>OpenAI(api_key=..., base_url=...)</code>；<strong>不做任何字符串拼接</strong>，避免出现非法 URL。</li>
-    <li>本工程使用 OpenAI 兼容协议，<strong>不绑定 DeepSeek</strong>。模型名必须与 <code>BASE_URL</code> 指向的服务商匹配；<code>deepseek-chat</code> 已下线（实测仅 <code>deepseek-flash</code> / <code>deepseek-v4-pro</code> 可用），填错或无权限的模型会直接报错。</li>
+    <li>本工程使用 OpenAI 兼容协议，<strong>不绑定任何特定服务商</strong>，代码里也不写死默认模型名。模型名必须与 <code>BASE_URL</code> 指向的服务商匹配，且必须是账号<strong>实际有权限调用</strong>的；填错或模型已下线会直接报错，因此三个变量缺失时应在启动阶段立即抛错说明原因。</li>
     <li>密钥缺失时，应在启动阶段快速失败并给出清晰提示，而不是拖到第一次调用才报错。</li>
   </ul>
 

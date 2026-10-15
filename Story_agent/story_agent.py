@@ -30,14 +30,35 @@ class StoryAgent:
         return self._final_gate(ctx, msgs)
 
     def _loop(self, ctx, msgs, steps, temp):
-        """ReAct 循环：思考 → 技能调用 → 观察回填；含步数上限与预算熔断。"""
+        """ReAct 循环：思考 → 技能调用 → 观察回填；含步数上限与预算熔断。
+
+        两处关键处理：
+        1. 格式错误（状态 bad）不消耗终止机会，而是回一句提示让模型重发；
+        2. 收尾前置校验——模型即使说 finish，只要工作台里还没有正文就拒绝收尾，
+           因为「说完成了」不等于「真的完成了」，空稿必须拦在交付之前。
+        """
+        bad = 0                              # 连续格式错误次数，防止模型死循环重复犯错
         for i in range(1, steps + 1):
             self._log(f"\n──────── 步骤 {i}/{steps} ────────")
             self._log("💭 智能体思考中…")
             raw = self.llm.chat(msgs, temp); msgs.append({"role": "assistant", "content": raw})
-            name, args = self._parse(raw)
+            state, name, args = self._parse(raw)
             if th := self._thought(raw): self._log("🧠 思考：" + th)
-            if not name: self._log("✅ 智能体表示已完成，准备交付。"); return          # 模型收尾
+            if state == "bad":
+                bad += 1
+                self._log(f"⚠️ 未识别到 Action（连续第 {bad} 次），要求模型按格式重发。")
+                if bad >= 3: self._log("⛔ 连续 3 次格式不合规，提前收尾。"); return
+                msgs.append({"role": "user", "content": "Observation: 未识别到可执行的 Action。请严格按格式输出：\nThought: ...\nAction: 技能名\nAction Input: {\"参数名\": \"值\"}\n可用技能：" + self._names()})
+                continue
+            bad = 0
+            if state == "finish":
+                # 交付前置校验：没有正文就不许收尾，这是空稿的最后一道闸
+                if not ctx.get("draft"):
+                    self._log("🚫 模型请求收尾，但工作台里还没有正文，拒绝收尾并要求补写。")
+                    msgs.append({"role": "user", "content": "Observation: 你请求收尾，但尚未调用 draft，缺少正文无法交付。"
+                                                           "请先调用 draft 撰写正文，再调用 eval 自查，最后才可 finish。"})
+                    continue
+                self._log("✅ 智能体表示已完成，准备交付。"); return
             self._log(f"🎯 调用技能：{name} {json.dumps(args, ensure_ascii=False)}")
             self._log("⏳ 技能执行中…")
             obs = self.skills.call(name, ctx, args)
@@ -49,6 +70,10 @@ class StoryAgent:
             if self.llm.tokens > self.budget: self._log("⚠️ 已达 token 预算上限，提前收尾。"); return
 
     # ---------------- 过程输出 ----------------
+    def _names(self):
+        """列出全部技能名，用于格式纠错时提示模型有哪些合法动作可选。"""
+        return "、".join(s["name"] for s in self.skills.specs())
+
     def _log(self, s):
         """统一的过程输出入口，flush 保证实时可见。"""
         if self.verbose: print(s, flush=True)
@@ -67,19 +92,27 @@ class StoryAgent:
 
     @staticmethod
     def _parse(text):
-        """解析模型输出 → (技能名, 参数字典)；无技能名或 finish 即视为收尾。
+        """解析模型输出 → (状态, 技能名, 参数字典)。状态取值如下：
 
-        加固点：参数一律从「Action 那一行之后」去找第一个 JSON 对象，而不强求它必须
-        写成 `Action Input: {...}`。模型常把参数换行另起、或漏掉 Input 一词，若用
-        `Action Input:` 这种紧贴写法匹配，参数就会被整段丢弃，技能只能按默认值执行
-        （outline 退回 brief、search 的 query 为空），而表面上流程照常跑完，很难排查。
+        - "call"    正常调用一个技能
+        - "finish"  模型**明确**要求收尾（Action: finish / final）
+        - "bad"     格式错误：有内容却没给出可执行的 Action，让模型重发
+
+        为什么必须区分 finish 与 bad：原先只要解析不到 Action 就一律当作收尾。实际运行中
+        模型常常写完一段思考后忘了写 `Action:` 行（例如「需要把四条主线落成章节…」），
+        于是被误判成「任务完成」而静默退出，循环提前结束、正文根本没写，交付空稿。
+        把格式失败当成完成是这个 bug 的根源，所以这里返回三态而非二态。
+
+        参数提取：从「Action 那一行之后」找第一个 JSON 对象，不强求写成 `Action Input:`。
+        模型常把参数换行另起、或漏掉 Input 一词，用紧贴写法匹配会整段丢弃参数。
         """
         m = re.search(r"Action\s*[:：]\s*(\w+)", text, re.I)
-        if not m or m.group(1).lower() in ("finish", "final"): return None, {}
+        if not m: return ("finish" if not text.strip() else "bad"), None, {}   # 空输出算收尾，有内容却无 Action 算格式错误
+        if m.group(1).lower() in ("finish", "final"): return "finish", None, {}
         a = re.search(r"\{.*\}", text[m.end():], re.S)          # 技能名之后的第一个 JSON 即参数
-        if not a: return m.group(1), {}                                        # 确实没给参数：按空参执行
-        try: return m.group(1), json.loads(a.group())
-        except json.JSONDecodeError: return m.group(1), {}                     # 参数非法：交由技能容错
+        if not a: return "call", m.group(1), {}                                    # 无参技能：按空参执行
+        try: return "call", m.group(1), json.loads(a.group())
+        except json.JSONDecodeError: return "call", m.group(1), {}                 # 参数非法：交由技能容错
 
     def _outline_gate(self, ctx):
         """第一道门（两段式）：摘要卡验收，最多 rounds 轮，超限采用当前版本。"""

@@ -9,7 +9,7 @@
 | 短篇小说生成智能体 | `Story_agent/story_main.py` | 输入「主题 + 要求」，自动产出短篇小说（含双审核门、记忆层、质量门） |
 | ReAct 基础示例 | `main.py` | 教学用的最小 ReAct 循环与反思式变体 |
 
-后端通过 OpenAI 兼容协议接入，默认使用 DeepSeek（模型名 `deepseek-flash`）。
+后端通过 OpenAI 兼容协议接入，模型服务商与模型名均由 `.env` 决定，代码不写死任何一家。
 
 ---
 
@@ -44,27 +44,17 @@ cp .env.example .env
 
 ### 换模型服务商
 
-本项目使用 OpenAI 兼容协议，**不绑定 DeepSeek**。任何兼容 Chat Completions 协议的服务都能接入，只需改对应 `.env` 里的三个值，代码一行都不用动：
+本项目使用 OpenAI 兼容协议，**不绑定任何服务商**。任何兼容 Chat Completions 接口的服务都能接入，只需在对应 `.env` 里填三个值，代码一行都不用改：
 
 ```ini
-# DeepSeek
-OPENAI_BASE_URL=https://api.deepseek.com/v1
-MODEL=deepseek-flash
-
-# 月之暗面
-OPENAI_BASE_URL=https://api.moonshot.cn/v1
-MODEL=moonshot-v1-8k
-
-# 智谱
-OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
-MODEL=glm-4-flash
-
-# 本地 Ollama（无需鉴权时 KEY 留空）
-OPENAI_BASE_URL=http://localhost:11434/v1
-MODEL=qwen2.5:7b
+OPENAI_BASE_URL=你的服务接口地址
+OPENAI_API_KEY=你的密钥
+MODEL=该服务提供的模型名
 ```
 
-> 注意模型名必须是该账号**实际有权限调用**的，填错或已下线的模型会直接报错。`Story_agent/.env.example` 里附了查询可用模型的命令。
+常见服务商接口地址可参考 `Story_agent/.env.example` 与 `.env.example` 中的注释示例（覆盖多家云服务与本地 Ollama / vLLM 部署）。
+
+> 模型名必须是你的账号**实际有权限调用**的，填错或已下线的模型会直接报错。模板里附了查询可用模型列表的命令。
 
 ### 2. 安装依赖
 

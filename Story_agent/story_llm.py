@@ -15,18 +15,22 @@ load_dotenv(_ENV)
 class LLM:
     """统一大模型客户端：不在别处 new OpenAI()，便于统一管理密钥与预算。
 
-    模型名优先级：构造参数 > 环境变量 MODEL > 默认值 deepseek-flash。
-    注意：默认值原先写的是 deepseek-chat，该模型在本账号已下线（实测仅
-    deepseek-flash / deepseek-v4-pro 可用），会导致所有请求直接报错，
-    故改为可用的 deepseek-flash；同时开放环境变量，便于换模型时不改代码。
+    模型名优先级：构造参数 > 环境变量 MODEL。代码里不写死任何具体服务商，
+    三个变量（BASE_URL / API_KEY / MODEL）缺一时直接抛错说明原因 —— 静默用一个
+    可能无权限或已下线的模型去请求，报错会很难定位。
 
-    换服务商时只需改 .env 里的三个值（BASE_URL / API_KEY / MODEL），本文件无需改动：
+    换服务商时只需改 .env 里的三个值，本文件无需改动：
     凡是兼容 OpenAI Chat Completions 协议的服务都能直接接入。
     """
 
     def __init__(self, model=None, temperature=0.7):
-        self.c = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL"))
-        self.model, self.temperature, self.tokens = model or os.getenv("MODEL", "deepseek-flash"), temperature, 0
+        base_url, api_key = os.getenv("OPENAI_BASE_URL"), os.getenv("OPENAI_API_KEY")
+        self.model = model or os.getenv("MODEL")
+        for name, val in (("OPENAI_BASE_URL", base_url), ("OPENAI_API_KEY", api_key), ("MODEL", self.model)):
+            if not val:
+                raise ValueError(f"缺少环境变量 {name}，请复制同目录的 .env.example 为 .env 并填入真实值")
+        self.c = OpenAI(api_key=api_key, base_url=base_url)
+        self.temperature, self.tokens = temperature, 0
 
     def chat(self, messages, temperature=None) -> str:
         """发一次对话并返回文本；顺带累计 token 供预算熔断。"""

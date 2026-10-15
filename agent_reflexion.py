@@ -10,11 +10,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY")
-base_url = os.getenv("OPENAI_BASE_URL", "https://api.deepseek.com/v1")
+# 配置一律来自环境变量，代码不写死任何服务商；缺配置就立刻报错，避免用错误的
+# 地址或无权限的模型去请求后收到难以定位的报错。变量名沿用 MODEL 以与其他模块一致。
+api_key = os.getenv("OPENAI_API_KEY")
+base_url = os.getenv("OPENAI_BASE_URL")
+LLM_MODEL = os.getenv("MODEL")
+for _name, _val in (("OPENAI_API_KEY", api_key), ("OPENAI_BASE_URL", base_url), ("MODEL", LLM_MODEL)):
+    if not _val:
+        raise ValueError(f"缺少环境变量 {_name}，请复制 .env.example 为 .env 并填入真实值")
 
 client = OpenAI(api_key=api_key, base_url=base_url)
-LLM_MODEL = os.getenv("LLM_MODEL", "deepseek-flash")
 
 TASKS = [
     # ===== 原有基础任务（稳定通过）=====
