@@ -5,8 +5,8 @@ def main():
     #创建工具
     tools = create_default_tools()
     
-     #创建Agent
-    agent = ReActAgent(tools, model="deepseek-chat")
+     #创建Agent（模型名改为已可用的 deepseek-flash，deepseek-chat 已下线）
+    agent = ReActAgent(tools, model="deepseek-flash")
     
     #测试用例
     test_cases = [

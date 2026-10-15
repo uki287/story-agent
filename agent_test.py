@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
-MODEL, MAX_STEPS, MAX_TOKENS = os.getenv("MODEL", "deepseek-chat"), 8, 8000
+# MODEL 可由环境变量覆盖；默认改为 deepseek-flash（deepseek-chat 在本账号已下线）
+MODEL, MAX_STEPS, MAX_TOKENS = os.getenv("MODEL", "deepseek-flash"), 8, 8000
 
 # ── 工具实现层 ────────────────────────────────────────────────────────────────
 # 安全计算：白名单 AST 求值，不用 eval()；只放行 + - * / 与一元负号

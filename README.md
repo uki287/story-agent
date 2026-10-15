@@ -9,7 +9,7 @@
 | 短篇小说生成智能体 | `Story_agent/story_main.py` | 输入「主题 + 要求」，自动产出短篇小说（含双审核门、记忆层、质量门） |
 | ReAct 基础示例 | `main.py` | 教学用的最小 ReAct 循环与反思式变体 |
 
-后端通过 OpenAI 兼容协议接入，默认使用 DeepSeek（模型名 `deepseek-chat`）。
+后端通过 OpenAI 兼容协议接入，默认使用 DeepSeek（模型名 `deepseek-flash`）。
 
 ---
 
@@ -17,18 +17,54 @@
 
 ### 1. 配置密钥
 
+**短篇小说智能体有独立的配置文件**，不共用项目根目录的 `.env`：
+
 ```bash
+cd Story_agent
 cp .env.example .env      # Windows: copy .env.example .env
 ```
 
-编辑 `.env` 填入真实密钥：
+编辑 `Story_agent/.env` 填入真实值：
 
 ```ini
-OPENAI_API_KEY=sk-你的密钥
-OPENAI_BASE_URL=https://api.deepseek.com/v1
+OPENAI_API_KEY=你的密钥
+OPENAI_BASE_URL=服务商接口地址
+MODEL=模型名
 ```
 
-> `.env` 已被 `.gitignore` 排除，不会误提交。密钥若曾被提交过，务必在 GitHub 后台**吊销并重建**，改文件是不够的。
+`story_llm.py` 显式按同目录加载这份配置，不会向上查找根目录那份。两份配置互不影响，`Story_agent` 目录可以单独拷走运行。
+
+**基础示例**（`main.py` / `agent_test.py`）仍使用项目根目录的 `.env`：
+
+```bash
+cp .env.example .env
+```
+
+> 两份 `.env` 都已被 `.gitignore` 排除，不会误提交。密钥若曾被提交过，务必在 GitHub 后台**吊销并重建**，改文件是不够的。
+
+### 换模型服务商
+
+本项目使用 OpenAI 兼容协议，**不绑定 DeepSeek**。任何兼容 Chat Completions 协议的服务都能接入，只需改对应 `.env` 里的三个值，代码一行都不用动：
+
+```ini
+# DeepSeek
+OPENAI_BASE_URL=https://api.deepseek.com/v1
+MODEL=deepseek-flash
+
+# 月之暗面
+OPENAI_BASE_URL=https://api.moonshot.cn/v1
+MODEL=moonshot-v1-8k
+
+# 智谱
+OPENAI_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+MODEL=glm-4-flash
+
+# 本地 Ollama（无需鉴权时 KEY 留空）
+OPENAI_BASE_URL=http://localhost:11434/v1
+MODEL=qwen2.5:7b
+```
+
+> 注意模型名必须是该账号**实际有权限调用**的，填错或已下线的模型会直接报错。`Story_agent/.env.example` 里附了查询可用模型的命令。
 
 ### 2. 安装依赖
 
